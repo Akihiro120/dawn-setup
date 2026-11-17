@@ -24,7 +24,7 @@ include(FetchContent)
 # Toggles go before MakeAvailable:
 # set(INCLUDE_IMGUI OFF)
 # set(INCLUDE_CIMGUI ON)
-FetchContent_Declare(dawn_setup SOURCE_DIR /Users/akihiro/Desktop/dawn-setup)
+FetchContent_Declare(dawn_setup GIT_REPOSITORY git@github.com:Akihiro120/dawn-setup.git GIT_TAG main GIT_SHALLOW TRUE)
 # or a local checkout:  FetchContent_Declare(dawn_setup SOURCE_DIR $ENV{HOME}/Desktop/dawn-setup)
 FetchContent_MakeAvailable(dawn_setup)
 
