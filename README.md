@@ -8,6 +8,10 @@ A prebuilt WebGPU stack for macOS (arm64, Release), pulled into projects with CM
 | `glfw`      | `INCLUDE_GLFW` (ON)     | GLFW 3.4, static |
 | `glfw_wgpu` | Dawn + GLFW both on      | `glfwCreateWGPUSurface(instance, window)`, C and C++ |
 | `imgui`     | `INCLUDE_IMGUI` (ON)    | Dear ImGui 1.93.0 (docking) + GLFW/WebGPU backends; needs Dawn + GLFW |
+| `imguizmo`  | `INCLUDE_IMGUIZMO` (ON) | ImGuizmo @ 105e4fd (gizmo, sequencer, curve/gradient/graph editors); auto-off without ImGui |
+| `glm`       | `INCLUDE_GLM` (ON)      | glm 1.0.3, header-only C++ math, depth range 0..1 for WebGPU |
+| `cglm`      | `INCLUDE_CGLM` (ON)     | cglm 0.9.7, header-only C math, depth range 0..1 for WebGPU |
+| `cimguizmo` | ImGuizmo + cimgui on    | ImGuizmo for C |
 | `cimgui`    | `INCLUDE_CIMGUI` (OFF)  | ImGui for C (cimgui @ 2a6a93f + WebGPU backend wrapper); needs ImGui |
 
 ## Use it
@@ -36,6 +40,7 @@ target_link_libraries(my_app PRIVATE webgpu glfw glfw_wgpu imgui)
 #include <cimgui.h>            // igBegin, igText, ...
 #include <cimgui_impl.h>       // ImGui_ImplGlfw_*
 #include <cimgui_impl_wgpu.h>  // ImGui_ImplWGPU_InitC + ImGui_ImplWGPU_*
+#include <cimguizmo.h>         // ImGuizmo_* (link cimguizmo)
 ```
 
 Turning cimgui on compiles ImGui with `IMGUI_DISABLE_OBSOLETE_FUNCTIONS` and gives the backends C
@@ -45,7 +50,7 @@ obsolete APIs being unavailable.
 ## Self-contained copy (offline route)
 
     python3 setup_project.py <project>                   # copy into <project>/vendor
-    python3 setup_project.py <project> --only cimgui     # pulls in its dependencies
+    python3 setup_project.py <project> --only cimguizmo  # pulls in its dependencies
     python3 setup_project.py <project> --mode link       # symlink instead of copying
 
 then `add_subdirectory(vendor)`. The copied `vendor/CMakeLists.txt` has the toggles preset to what was copied.
@@ -54,7 +59,7 @@ then `add_subdirectory(vendor)`. The copied `vendor/CMakeLists.txt` has the togg
 
 - `CMakeLists.txt` entry point for FetchContent (just `add_subdirectory(vendor)`)
 - `vendor/` headers, prebuilt libs, sources, and the CMake that defines the targets
-- `examples/` `hello` (C + C++, Dawn only), `window` (C++ + ImGui), `window_c` (C + cimgui)
+- `examples/` `hello` (C + C++, Dawn only), `window` (C++: ImGui + ImGuizmo + glm), `window_c` (C: cimgui + cimguizmo + cglm)
 - `_build/` sources and build trees (git-ignored, 1.5 GB); delete it if you won't rebuild
 
 ## Rebuilding Dawn
@@ -66,3 +71,9 @@ then `add_subdirectory(vendor)`. The copied `vendor/CMakeLists.txt` has the togg
     cmake --build _build/dawn-build && cmake --install _build/dawn-build --prefix _build/dawn-install
 
 then copy `_build/dawn-install/include/{webgpu,dawn/*.h}` and `lib/libwebgpu_dawn.a` into `vendor/webgpu`.
+
+## Math and clip space
+
+glm and cglm are compiled with `GLM_FORCE_DEPTH_ZERO_TO_ONE` / `CGLM_FORCE_DEPTH_ZERO_TO_ONE`, so
+`glm::perspective` / `glm_perspective` give WebGPU's 0..1 depth range. To get OpenGL-style matrices
+instead, remove the define in `vendor/CMakeLists.txt`.

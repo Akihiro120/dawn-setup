@@ -10,6 +10,10 @@ Components (all by default):
     glfw_wgpu  WebGPU surface for a GLFW window (needs webgpu, glfw)
     imgui      Dear ImGui (docking) source + GLFW/WebGPU backends (needs webgpu, glfw)
     cimgui     C bindings for ImGui (needs imgui)
+    imguizmo   ImGuizmo + companion widgets (needs imgui)
+    cimguizmo  C bindings for ImGuizmo (needs imguizmo, cimgui)
+    glm        header-only C++ math
+    cglm       header-only C math
 
 Modes:
     copy  (default) copy the files into <project>/vendor; the project is self-contained.
@@ -37,22 +41,27 @@ from pathlib import Path
 
 SOURCE_VENDOR = Path(__file__).resolve().parent / "vendor"
 
-COMPONENTS = ["webgpu", "glfw", "glfw_wgpu", "imgui", "cimgui"]
+COMPONENTS = ["webgpu", "glfw", "glfw_wgpu", "imgui", "cimgui", "imguizmo", "cimguizmo", "glm", "cglm"]
 REQUIRES = {
     "webgpu": [],
     "glfw": [],
     "glfw_wgpu": ["webgpu", "glfw"],
     "imgui": ["webgpu", "glfw"],
     "cimgui": ["imgui"],
+    "imguizmo": ["imgui"],
+    "cimguizmo": ["imguizmo", "cimgui"],
+    "glm": [],
+    "cglm": [],
 }
 
 # vendor/CMakeLists.txt toggle -> component it controls.
-TOGGLES = {"INCLUDE_DAWN": "webgpu", "INCLUDE_GLFW": "glfw", "INCLUDE_IMGUI": "imgui", "INCLUDE_CIMGUI": "cimgui"}
+TOGGLES = {"INCLUDE_DAWN": "webgpu", "INCLUDE_GLFW": "glfw", "INCLUDE_IMGUI": "imgui", "INCLUDE_CIMGUI": "cimgui", "INCLUDE_IMGUIZMO": "imguizmo",
+           "INCLUDE_GLM": "glm", "INCLUDE_CGLM": "cglm"}
 
 
 def resolve_components(only: str | None) -> list[str]:
     if not only:
-        return [c for c in COMPONENTS if c != "cimgui"]
+        return [c for c in COMPONENTS if c not in ("cimgui", "cimguizmo")]
     wanted = {c.strip() for c in only.split(",") if c.strip()}
     unknown = wanted - set(COMPONENTS)
     if unknown:
@@ -71,6 +80,9 @@ def resolve_components(only: str | None) -> list[str]:
     # CMake builds glfw_wgpu whenever both Dawn and GLFW are enabled.
     if {"webgpu", "glfw"} <= wanted:
         wanted.add("glfw_wgpu")
+    # ...and cimguizmo whenever both ImGuizmo and cimgui are enabled.
+    if {"imguizmo", "cimgui"} <= wanted:
+        wanted.add("cimguizmo")
     return [c for c in COMPONENTS if c in wanted]
 
 
@@ -134,8 +146,9 @@ def main() -> int:
 
     cmake_text = (SOURCE_VENDOR / "CMakeLists.txt").read_text()
     for toggle, comp in TOGGLES.items():
-        cmake_text = re.sub(rf'(option\({toggle}\s+"[^"]*"\s+)(ON|OFF)\)',
-                            rf'\g<1>{"ON" if comp in components else "OFF"})', cmake_text)
+        # Matches option(...) and cmake_dependent_option(...): the first ON/OFF is the default.
+        cmake_text = re.sub(rf'(option\({toggle}\s+"[^"]*"\s+)(ON|OFF)\b',
+                            rf'\g<1>{"ON" if comp in components else "OFF"}', cmake_text)
     cmake_file.write_text(cmake_text)
     print("wrote   vendor/CMakeLists.txt")
 

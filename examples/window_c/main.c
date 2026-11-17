@@ -5,6 +5,8 @@
 #include <cimgui.h>
 #include <cimgui_impl.h>
 #include <cimgui_impl_wgpu.h>
+#include <cimguizmo.h>
+#include <cglm/cglm.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,6 +90,8 @@ int main(void) {
     ImGui_ImplWGPU_InitC(&imguiInfo);
 
     float clear[3] = { 0.08f, 0.08f, 0.1f };
+    mat4 view, projection, model = GLM_MAT4_IDENTITY_INIT, identity = GLM_MAT4_IDENTITY_INIT;
+    glm_lookat((vec3){ 4.0f, 3.0f, 6.0f }, (vec3){ 0.0f, 0.0f, 0.0f }, (vec3){ 0.0f, 1.0f, 0.0f }, view);
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         wgpuInstanceProcessEvents(instance);
@@ -112,9 +116,20 @@ int main(void) {
         ImGui_ImplWGPU_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         igNewFrame();
+        ImGuizmo_BeginFrame();
+
+        // ImGuizmo: grid, translate gizmo and view cube drawn over the whole window.
+        ImGuiIO* io = igGetIO_Nil();
+        glm_perspective(glm_rad(45.0f), io->DisplaySize.x / io->DisplaySize.y, 0.1f, 100.0f, projection);
+        ImGuizmo_SetRect(0, 0, io->DisplaySize.x, io->DisplaySize.y);
+        ImGuizmo_DrawGrid(view[0], projection[0], identity[0], 10.0f);
+        ImGuizmo_Manipulate(view[0], projection[0], TRANSLATE, WORLD, model[0], NULL, NULL, NULL, NULL);
+        ImGuizmo_ViewManipulate_Float(view[0], 8.0f, (ImVec2_c){ io->DisplaySize.x - 128, 0 }, (ImVec2_c){ 128, 128 }, 0x10101010);
+
         igBegin("dawn-setup (C)", NULL, 0);
-        igText("%.1f FPS", igGetIO_Nil()->Framerate);
+        igText("%.1f FPS", io->Framerate);
         igColorEdit3("Clear color", clear, 0);
+        igText("Gizmo position: %.2f %.2f %.2f", model[3][0], model[3][1], model[3][2]);
         igEnd();
         igRender();
 

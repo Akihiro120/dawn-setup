@@ -9,4 +9,4 @@ FetchContent_Declare(dawn_setup SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 FetchContent_MakeAvailable(dawn_setup)
 
 add_executable(window_c main.c)
-target_link_libraries(window_c PRIVATE webgpu glfw glfw_wgpu cimgui)
+target_link_libraries(window_c PRIVATE webgpu glfw glfw_wgpu cimgui cimguizmo cglm)

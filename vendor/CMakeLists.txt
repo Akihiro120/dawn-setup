@@ -1,4 +1,4 @@
-# Prebuilt WebGPU stack: Dawn, GLFW, GLFW<->WebGPU surface helper, Dear ImGui, cimgui.
+# Prebuilt WebGPU stack: Dawn, GLFW, surface helper, Dear ImGui/cimgui, ImGuizmo/cimguizmo, glm/cglm.
 #
 # Targets (each only when enabled):
 #   webgpu      Dawn (C: <webgpu/webgpu.h>, C++: <webgpu/webgpu_cpp.h>)   INCLUDE_DAWN
@@ -6,6 +6,10 @@
 #   glfw_wgpu   glfwCreateWGPUSurface(), C and C++                         INCLUDE_DAWN + INCLUDE_GLFW
 #   imgui       Dear ImGui (docking) + GLFW/WebGPU backends                INCLUDE_IMGUI
 #   cimgui      C bindings for imgui and both backends                     INCLUDE_CIMGUI
+#   imguizmo    ImGuizmo (gizmo, sequencer, curve/gradient/graph editors)  INCLUDE_IMGUIZMO (only with ImGui)
+#   cimguizmo   C bindings for ImGuizmo                                    INCLUDE_IMGUIZMO + INCLUDE_CIMGUI
+#   glm         glm, header-only C++ math                                  INCLUDE_GLM
+#   cglm        cglm, header-only C math                                   INCLUDE_CGLM
 #
 # Set the options before FetchContent_MakeAvailable / add_subdirectory, e.g.
 #   set(INCLUDE_IMGUI OFF)
@@ -17,6 +21,11 @@ option(INCLUDE_DAWN   "Provide the webgpu (Dawn) target"                  ON)
 option(INCLUDE_GLFW   "Provide the glfw and glfw_wgpu targets"            ON)
 option(INCLUDE_IMGUI  "Provide the imgui target (needs Dawn and GLFW)"    ON)
 option(INCLUDE_CIMGUI "Provide the cimgui target, ImGui for C"            OFF)
+# ImGuizmo switches itself off when ImGui is off.
+include(CMakeDependentOption)
+cmake_dependent_option(INCLUDE_IMGUIZMO "Provide the imguizmo target" ON "INCLUDE_IMGUI" OFF)
+option(INCLUDE_GLM    "Provide the glm target (C++ math)"                ON)
+option(INCLUDE_CGLM   "Provide the cglm target (C math)"                 ON)
 
 set(VENDOR_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Threads REQUIRED)
@@ -140,4 +149,53 @@ if(INCLUDE_CIMGUI)
     target_compile_definitions(cimgui INTERFACE
         $<$<COMPILE_LANGUAGE:C>:CIMGUI_DEFINE_ENUMS_AND_STRUCTS>
         CIMGUI_USE_GLFW)
+endif()
+
+# --- imguizmo: ImGuizmo and its companion widgets -----------------------------
+# #include <ImGuizmo.h>  (also ImSequencer.h, ImCurveEdit.h, ImGradient.h, GraphEditor.h, ...)
+if(INCLUDE_IMGUIZMO)
+    _require_dir(imguizmo)
+    add_library(imguizmo STATIC
+        ${VENDOR_DIR}/imguizmo/ImGuizmo.cpp
+        ${VENDOR_DIR}/imguizmo/ImSequencer.cpp
+        ${VENDOR_DIR}/imguizmo/ImCurveEdit.cpp
+        ${VENDOR_DIR}/imguizmo/ImGradient.cpp
+        ${VENDOR_DIR}/imguizmo/GraphEditor.cpp
+        ${VENDOR_DIR}/imguizmo/ImVectorEditor.cpp)
+    target_include_directories(imguizmo PUBLIC ${VENDOR_DIR}/imguizmo)
+    target_link_libraries(imguizmo PUBLIC imgui)
+endif()
+
+# --- cimguizmo: ImGuizmo for C ------------------------------------------------
+# #include <cimguizmo.h>  ->  ImGuizmo_BeginFrame, ImGuizmo_Manipulate, ...
+if(INCLUDE_IMGUIZMO AND INCLUDE_CIMGUI)
+    _require_dir(cimguizmo)
+    add_library(cimguizmo STATIC ${VENDOR_DIR}/cimguizmo/cimguizmo.cpp)
+    target_include_directories(cimguizmo PUBLIC ${VENDOR_DIR}/cimguizmo)
+    target_link_libraries(cimguizmo PUBLIC imguizmo cimgui)
+    # The generated wrapper also covers ImGuizmo's deprecated functions.
+    if(NOT MSVC)
+        target_compile_options(cimguizmo PRIVATE -Wno-deprecated-declarations)
+    endif()
+endif()
+
+# --- glm / cglm: header-only math ---------------------------------------------
+# Both are configured for WebGPU's clip space: depth range 0..1 instead of OpenGL's -1..1,
+# so glm::perspective / glm_perspective produce matrices WebGPU can use directly.
+# C++: #include <glm/glm.hpp>     C: #include <cglm/cglm.h>
+if(INCLUDE_GLM)
+    _require_dir(glm)
+    add_library(glm INTERFACE)
+    target_include_directories(glm INTERFACE ${VENDOR_DIR}/glm/include)
+    target_compile_definitions(glm INTERFACE GLM_FORCE_DEPTH_ZERO_TO_ONE)
+endif()
+
+if(INCLUDE_CGLM)
+    _require_dir(cglm)
+    add_library(cglm INTERFACE)
+    target_include_directories(cglm INTERFACE ${VENDOR_DIR}/cglm/include)
+    target_compile_definitions(cglm INTERFACE CGLM_FORCE_DEPTH_ZERO_TO_ONE)
+    if(UNIX AND NOT APPLE)
+        target_link_libraries(cglm INTERFACE m)
+    endif()
 endif()
