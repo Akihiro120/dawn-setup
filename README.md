@@ -25,7 +25,7 @@ include(FetchContent)
 # set(INCLUDE_IMGUI OFF)
 # set(INCLUDE_CIMGUI ON)
 FetchContent_Declare(dawn_setup SOURCE_DIR /Users/akihiro/Desktop/dawn-setup)
-# or, once pushed:  FetchContent_Declare(dawn_setup GIT_REPOSITORY <url> GIT_TAG main)
+# or a local checkout:  FetchContent_Declare(dawn_setup SOURCE_DIR $ENV{HOME}/Desktop/dawn-setup)
 FetchContent_MakeAvailable(dawn_setup)
 
 add_executable(my_app main.cpp)
