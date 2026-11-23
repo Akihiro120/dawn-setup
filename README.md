@@ -72,12 +72,13 @@ A complete, working program is in [`examples/window_c/main.c`](examples/window_c
 | [Dear ImGui](https://github.com/ocornut/imgui) | Debug UI (docking branch, with GLFW + WebGPU backends) | `imgui` | `cimgui` | 1.93.0 |
 | [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) | 3D gizmos, plus sequencer and curve editors | `imguizmo` | `cimguizmo` | `105e4fd` |
 | [glm](https://github.com/g-truc/glm) / [cglm](https://github.com/recp/cglm) | Vector and matrix math | `glm` | `cglm` | 1.0.3 / 0.9.7 |
+| [flecs](https://github.com/SanderMertens/flecs) | Entity component system (off by default) | `flecs` | `flecs` | 4.2.0 |
 
-Dawn and GLFW are prebuilt static libraries. Everything else is built from source as part of your project.
+Dawn, GLFW and flecs are prebuilt static libraries. Everything else is built from source as part of your project.
 
 ## Turning libraries off
 
-Every library is on by default except the C bindings for ImGui. To change that, `set()` a toggle **before**
+Every library is on by default except the C bindings for ImGui and flecs. To change that, `set()` a toggle **before**
 `FetchContent_MakeAvailable`:
 
 ```cmake
@@ -93,6 +94,7 @@ set(INCLUDE_IMGUI OFF)   # e.g. no debug UI
 | `INCLUDE_GLM` | ON | |
 | `INCLUDE_CGLM` | ON | |
 | `INCLUDE_CIMGUI` | OFF | ImGui for C. Needs ImGui. `cimguizmo` is added automatically when ImGuizmo is also on |
+| `INCLUDE_FLECS` | OFF | ECS. One header, `<flecs.h>`, with the C API and (from C++) the C++ API |
 
 If you turn something on without what it depends on, CMake stops and tells you what's missing.
 
@@ -167,6 +169,19 @@ The build takes roughly 20–30 minutes. Then replace the files in `vendor/webgp
 - `dawn-install/include/webgpu/` → `vendor/webgpu/include/webgpu/`
 - `dawn-install/include/dawn/*.h` (the top-level headers only) → `vendor/webgpu/include/dawn/`
 - `dawn-install/lib/libwebgpu_dawn.a` → `vendor/webgpu/lib/`
+
+## Rebuilding flecs
+
+flecs ships as a single `flecs.c` / `flecs.h` pair, so only the header and a static library live here:
+
+```sh
+git clone --depth 1 --branch v4.2.0 https://github.com/SanderMertens/flecs.git flecs-src
+clang -std=c99 -O2 -DNDEBUG -arch arm64 -c flecs-src/distr/flecs.c -o flecs.o
+ar rcs libflecs.a flecs.o
+```
+
+Then copy `flecs-src/distr/flecs.h` → `vendor/flecs/include/` and `libflecs.a` → `vendor/flecs/lib/`.
+The library is built with `NDEBUG`, so flecs' internal asserts are off.
 
 ## Licenses
 

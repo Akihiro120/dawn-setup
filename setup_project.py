@@ -4,7 +4,7 @@
 Usage:
     python3 setup_project.py <project_path> [--mode copy|link] [--only webgpu,glfw,...] [--force]
 
-Components (all by default):
+Components (all by default, except cimgui, cimguizmo and flecs):
     webgpu     Dawn headers + static library   -> vendor/webgpu/{include,lib}
     glfw       GLFW headers + static library   -> vendor/glfw/{include,lib}
     glfw_wgpu  WebGPU surface for a GLFW window (needs webgpu, glfw)
@@ -14,6 +14,7 @@ Components (all by default):
     cimguizmo  C bindings for ImGuizmo (needs imguizmo, cimgui)
     glm        header-only C++ math
     cglm       header-only C math
+    flecs      flecs ECS headers + static library -> vendor/flecs/{include,lib}
 
 Modes:
     copy  (default) copy the files into <project>/vendor; the project is self-contained.
@@ -41,7 +42,7 @@ from pathlib import Path
 
 SOURCE_VENDOR = Path(__file__).resolve().parent / "vendor"
 
-COMPONENTS = ["webgpu", "glfw", "glfw_wgpu", "imgui", "cimgui", "imguizmo", "cimguizmo", "glm", "cglm"]
+COMPONENTS = ["webgpu", "glfw", "glfw_wgpu", "imgui", "cimgui", "imguizmo", "cimguizmo", "glm", "cglm", "flecs"]
 REQUIRES = {
     "webgpu": [],
     "glfw": [],
@@ -52,16 +53,17 @@ REQUIRES = {
     "cimguizmo": ["imguizmo", "cimgui"],
     "glm": [],
     "cglm": [],
+    "flecs": [],
 }
 
 # vendor/CMakeLists.txt toggle -> component it controls.
 TOGGLES = {"INCLUDE_DAWN": "webgpu", "INCLUDE_GLFW": "glfw", "INCLUDE_IMGUI": "imgui", "INCLUDE_CIMGUI": "cimgui", "INCLUDE_IMGUIZMO": "imguizmo",
-           "INCLUDE_GLM": "glm", "INCLUDE_CGLM": "cglm"}
+           "INCLUDE_GLM": "glm", "INCLUDE_CGLM": "cglm", "INCLUDE_FLECS": "flecs"}
 
 
 def resolve_components(only: str | None) -> list[str]:
     if not only:
-        return [c for c in COMPONENTS if c not in ("cimgui", "cimguizmo")]
+        return [c for c in COMPONENTS if c not in ("cimgui", "cimguizmo", "flecs")]
     wanted = {c.strip() for c in only.split(",") if c.strip()}
     unknown = wanted - set(COMPONENTS)
     if unknown:

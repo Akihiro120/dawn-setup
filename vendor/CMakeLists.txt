@@ -10,6 +10,7 @@
 #   cimguizmo   C bindings for ImGuizmo                                    INCLUDE_IMGUIZMO + INCLUDE_CIMGUI
 #   glm         glm, header-only C++ math                                  INCLUDE_GLM
 #   cglm        cglm, header-only C math                                   INCLUDE_CGLM
+#   flecs       flecs ECS, prebuilt; C and C++ API in <flecs.h>           INCLUDE_FLECS (default OFF)
 #
 # Set the options before FetchContent_MakeAvailable / add_subdirectory, e.g.
 #   set(INCLUDE_IMGUI OFF)
@@ -26,6 +27,7 @@ include(CMakeDependentOption)
 cmake_dependent_option(INCLUDE_IMGUIZMO "Provide the imguizmo target" ON "INCLUDE_IMGUI" OFF)
 option(INCLUDE_GLM    "Provide the glm target (C++ math)"                ON)
 option(INCLUDE_CGLM   "Provide the cglm target (C math)"                 ON)
+option(INCLUDE_FLECS  "Provide the flecs target (ECS)"                   OFF)
 
 set(VENDOR_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 find_package(Threads REQUIRED)
@@ -197,5 +199,30 @@ if(INCLUDE_CGLM)
     target_compile_definitions(cglm INTERFACE CGLM_FORCE_DEPTH_ZERO_TO_ONE)
     if(UNIX AND NOT APPLE)
         target_link_libraries(cglm INTERFACE m)
+    endif()
+endif()
+
+# --- flecs: ECS, prebuilt static library --------------------------------------
+# #include <flecs.h>  ->  C API; from C++ the same header also gives flecs::world etc.
+# Built from flecs' single-file distr/flecs.c, so only the header and library ship here.
+if(INCLUDE_FLECS)
+    _require_dir(flecs)
+    if(WIN32)
+        set(_flecs_lib ${VENDOR_DIR}/flecs/lib/flecs.lib)
+    else()
+        set(_flecs_lib ${VENDOR_DIR}/flecs/lib/libflecs.a)
+    endif()
+
+    add_library(flecs STATIC IMPORTED GLOBAL)
+    set_target_properties(flecs PROPERTIES
+        IMPORTED_LOCATION ${_flecs_lib}
+        INTERFACE_INCLUDE_DIRECTORIES ${VENDOR_DIR}/flecs/include)
+    # The C++ API needs C++17.
+    target_compile_features(flecs INTERFACE cxx_std_17)
+    target_link_libraries(flecs INTERFACE Threads::Threads)
+    if(WIN32)
+        target_link_libraries(flecs INTERFACE ws2_32 dbghelp)
+    elseif(UNIX AND NOT APPLE)
+        target_link_libraries(flecs INTERFACE m)
     endif()
 endif()
